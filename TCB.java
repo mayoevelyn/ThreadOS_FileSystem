@@ -13,6 +13,11 @@ public class TCB {
 	terminated = false;
 
 	ftEnt = new FileTableEntry[32];    // added for the file system
+	
+	for (int i = 0; i < 32; i++)
+	{
+		ftEnt[i] = null;
+	} //fd[0] , fd[1] and fd[2] are kept null
 
 	System.err.println( "threadOS: a new thread (thread=" + thread + 
 			    " tid=" + tid + 
