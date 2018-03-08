@@ -45,6 +45,19 @@ public class Directory {
    }
 
    public short namei( String filename ) {
-      // returns the inumber corresponding to this filename
+	   char[] searchName = new char[filename.length()];
+	   filename.getChars(0,searchName.length,searchName,0);
+	   	for(int i = 0; i < fsizes.length; i++) {
+			if(fsizes[i] > 0 && fsizes[i] == searchName.length) {
+				char[] name = fnames[i];
+				for(int ind = 0; ind < searchName.length; ind++) {
+					if(name[ind] != searchName[ind]) {
+						return -1;
+					}
+				}
+				return i;
+			}
+		}
    }
+   
 }
