@@ -190,18 +190,17 @@ public class Kernel {
                                 return fs.write(ftEnt, (byte[])args);
                         }
                         return OK;
-                    case CREAD:   // to be implemented in assignment 4
+                    case CREAD:		//reads from cache
                         return cache.read(param, (byte[]) args) ? OK : ERROR;
-                    case CWRITE:  // to be implemented in assignment 4
+                    case CWRITE:	//writes to cache
                         return cache.write(param, (byte[]) args) ? OK : ERROR;
-                    case CSYNC:   // to be implemented in assignment 4
+                    case CSYNC:   	// syncs cache
                         cache.sync();
                         return OK;
-                    case CFLUSH:  // to be implemented in assignment 4
+                    case CFLUSH:  	// flushes cache
                         cache.flush();
                         return OK;
-                    case OPEN:    // to be implemented in project
-                        // check if my TCB null
+                    case OPEN:		// opens a file
                         if ((myTcb = scheduler.getMyTcb()) != null) {
                             // parse args to string[]
                             String[] s = (String[]) args;
@@ -210,18 +209,18 @@ public class Kernel {
                         } else
                             // if TCB null, return error
                             return ERROR;
-                    case CLOSE:   // to be implemented in project
+                    case CLOSE:		// cloes a file
                         if ((myTcb = scheduler.getMyTcb()) != null) {
                             FileTableEntry ftEnt = myTcb.getFtEnt(param);
                             if (ftEnt == null || fs.close(ftEnt) == -1)
                                 return ERROR;
-                            if (myTcb.returnFd(param) != var8)
+                            if (myTcb.returnFd(param) != ftEnt)
                                 return ERROR;
                             return OK;
                         }
                         // if TCB null, return error
                         return ERROR;
-                    case SIZE:    // to be implemented in project
+                    case SIZE:    	// gets the size of a file
                         if ((myTcb = scheduler.getMyTcb()) != null) {
                             FileTableEntry ftEnt = myTcb.getFtEnt(param);
                             if (ftEnt != null)
@@ -229,7 +228,7 @@ public class Kernel {
                         }
                         // if TCB null, return error
                         return ERROR;
-                    case SEEK:    // to be implemented in project
+                    case SEEK:    	// moves file seek pointer
                         // check if my TCB null
                         if ((myTcb = scheduler.getMyTcb()) != null) {
                             // parse args to int[]
@@ -242,9 +241,9 @@ public class Kernel {
                         }
                         // if TCB null, return error
                         return ERROR;
-                    case FORMAT:  // to be implemented in project
+                    case FORMAT:  	// formats hard disk
                         return fs.format(param);
-                    case DELETE:  // to be implemented in project
+                    case DELETE:  	// deletes a file
                         return fs.delete((String) args);
                 }
                 return ERROR;

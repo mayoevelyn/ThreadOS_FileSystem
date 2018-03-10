@@ -159,7 +159,7 @@ public class FileSystem
             else
             {
                 System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, bufferLength);
-                SysLib.rawwrite(currBlock, shadowBuffer0);
+                SysLib.rawwrite(currBlock, shadowBuffer, 0);
 
                 target.seekPtr += bufferLength;
                 totalBytesWritten += bufferLength;
@@ -201,7 +201,7 @@ public class FileSystem
 
                 if (finalBlock)
                 {
-                    readingLength = fileLocation;
+                    readingLength = remaining;
                 }
                 else
                 {
