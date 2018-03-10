@@ -54,6 +54,9 @@ public class Kernel
    private static SyncQueue waitQueue;  // for threads to wait for their child
    private static SyncQueue ioQueue;    // I/O queue
 
+   // File system
+   private static FileSystem fs;        // for ThreadOS file system
+
    private final static int COND_DISK_REQ = 1; // wait condition 
    private final static int COND_DISK_FIN = 2; // wait condition
 
@@ -82,6 +85,10 @@ public class Kernel
                   // instantiate synchronized queues
                   ioQueue = new SyncQueue( );
                   waitQueue = new SyncQueue( scheduler.getMaxThreads( ) );
+
+                  // instantiate file system
+                  fs = new FileSystem(1000);
+
                   return OK;
                case EXEC:
                   return sysExec( ( String[] )args );
@@ -183,7 +190,14 @@ public class Kernel
                   cache.flush( );
                   return OK;
                case OPEN:    // to be implemented in project
-                  return OK;
+                  // check if my TCB null
+                  if ((myTcb = scheduler.getMyTcb()) != null) {
+
+                     String[] argsString = (String[])args;
+                     return myTcb.getFd(fs.open(argsString[0], argsString[1]));
+                  }
+                  // if TCB null, return error
+                  return ERROR;
                case CLOSE:   // to be implemented in project
                   return OK;
                case SIZE:    // to be implemented in project
