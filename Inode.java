@@ -39,11 +39,43 @@ public class Inode {
 		for(int i = 0; i < 11; ++i) {
 			direct[i] = SysLib.bytes2short(data, offset);
 		}
+		indirect = SysLib.bytes2short(data, offset);
 	}
 
 	//save to disk as the given node
 	int toDisk( short iNumber ) {
-
+		
+		//create the array we'll save
+		byte[] asArray = new byte[iNodeSize];
+		int blockNumber = 1 + iNumber / 16;
+		int offset = 0;
+		
+		//start writing values into our array
+		SysLib.int2bytes(length, asArray, offset);
+		offset += 4;
+		SysLib.short2bytes(count, asArray, offset);
+		offset += 2;
+		SysLib.short2bytes(flag, asArray, offset);
+		offset += 2;
+		
+		//write the direct array
+		for (int i = 0; j < 11; i++) {
+			SysLib.short2bytes(direct[i], asArray, offset);
+			offset += 2;
+		}
+		
+		//write the indirect
+		SysLib.short2bytes(indirect, asArray, offset);
+		
+		//read in what's currently there
+		byte[] data = new byte[Disk.blockSize];
+		SysLib.rawread( blockNumber, data );
+		
+		//copy our new byte representation in
+		System.arraycopy(asArray, 0, data, iNumber % 16 * 32, 32);
+		
+		//write to disk
+		SysLib.rawwrite(blockNumber, data);
 	}
 	
 	//helper method
