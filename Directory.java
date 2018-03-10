@@ -2,7 +2,7 @@ public class Directory {
 	private static int maxChars = 30; // max characters of each file name
 
 	// Directory entries
-	private int fsize[];        // each element stores a different file size.
+	private int fsizes[];        // each element stores a different file size.
 	private char fnames[][];    // each element stores a different file name.
 	
 	//Instantiates directory structure
@@ -10,11 +10,11 @@ public class Directory {
 	public Directory( int maxInumber ) { // directory constructor
 		fsizes = new int[maxInumber];     // maxInumber = max files
 		for ( int i = 0; i < maxInumber; i++ ) 
-			fsize[i] = 0;                 // all file size initialized to 0
+			fsizes[i] = 0;                 // all file size initialized to 0
 		
 		fnames = new char[maxInumber][maxChars];
 		String root = "/";                // entry(inode) 0 is "/"
-		fsize[0] = root.length( );        // fsize[0] is the size of "/".
+		fsizes[0] = root.length( );        // fsizes[0] is the size of "/".
 		root.getChars( 0, fsizes[0], fnames[0], 0 ); // fnames[0] includes "/"
 	}
 
@@ -29,7 +29,7 @@ public class Directory {
 		
 		for(int i = 0; i < fnames.length; i++, offset += maxChars * 2) {
 			String fname = new String( data, offset, maxChars * 2);
-			fname.getChars(0, fsizes[i], fnames[i], 0)
+			fname.getChars(0, fsizes[i], fnames[i], 0);
 		}
 	}
 
@@ -47,7 +47,9 @@ public class Directory {
 		}
 
 		for(int i = 0; i < fnames.length; i++) {
-			SysLib.int2bytes(fnames[i], directoryAsBytes, offset);
+			String tempFileName = new String(fnames[i],0,fsizes[i]);
+			byte[] byteFileName = tempFileName.getBytes();
+			System.arraycopy(byteFileName, 0, directoryAsBytes, offset, byteFileName.length);
 			offset += maxChars * 2;
 		}
 
@@ -66,7 +68,7 @@ public class Directory {
 			   filename.getChars(0,fsizes[i],fnames[i],0);
 			   
 			   //return the iNode we used
-			   return i;
+			   return (short)i;
 			}
 		}
 		return -1;
@@ -89,8 +91,8 @@ public class Directory {
 		for(int i = 0; i < fsizes.length; i++) {
 			if(fsizes[i] > 0 && fsizes[i] == filename.length()) {
 				String compare = new String(fnames[i], 0, fsizes[i]);
-				if(fileName.equals(compare)) {
-					return i;
+				if(filename.equals(compare)) {
+					return (short)i;
 				}
 			}
 		}
