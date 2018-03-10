@@ -6,6 +6,10 @@ public class FileySystem
 	private Directory directoy;
 	private FileTable filetable;
 
+	private static short SEEK_SET = 0;
+	private static short SEEK_CUR = 1;
+	private static short SEEK_END = 2;
+
 	public FileSystem (int diskBlocks)
 	{
 		superblock = new SuperBlock(diskBlocks);
@@ -26,33 +30,267 @@ public class FileySystem
 
 	public int format(int files)
 	{
-		superblock.format(files);
-		directory = new Directory(superblock.inodeBlocks);
-		filetable = new FileTable(directory);
-		return 0;
-	}
-	
-	public int open(String fileName, String mode)
-	{
-	}
-
-	public int read(int fd, byte buffer[])
-	{
-	}
-
-	public int seek(int fd, int offset, int whence)
-	{
+	    if (files > 0)
+	    {
+            superblock.format(files);
+            directory = new Directory(superblock.inodeBlocks);
+            filetable = new FileTable(directory);
+            return 0;
+        }
+        else
+        {
+            return -1;
+        }
 	}
 
-	public int close(int fd)
+	public void sync()
+    {
+        byte[] oldDirectory  = directory.directory2bytes();
+        FileTableEntry rootFile = open("/", "w");
+        write(rootFile, directory.directory2bytes());
+        close(rootFile);
+        superblock.sync();
+    }
+    public int seek(FileTableEntry target, int offset, int whence)
+    {
+        int targetLocation = target.seekPtr;
+        if (whence == SEEK_SET)
+        {
+            target.seekPtr = offset;
+        }
+        else if (whence == SEEK_CUR)
+        {
+            target.seekPtr += offset;
+        }
+        else if (whence == SEEK_END)
+        {
+            target.seekPtr = target.inode.length + offset;
+        }
+        else
+        {
+            return -1;
+        }
+
+        if (target.seekPtr > target.inode.length)
+        {
+            target.seekPtr = target.inode.length;
+        }
+
+        if (target.seekPtr < 0)
+        {
+            target.seekPtr = 0;
+        }
+
+        return target.seekPtr;
+    }
+
+    public FileTableEntry open(String fileName, String mode)
 	{
+	    FileTableEntry fileToOpen = filetable.falloc(filename, mode);
+
+	    if (mode == "w")
+        {
+            if (!deallocateBlocks(fileToOpen))
+            {
+                return null;
+            }
+        }
+
+        return fileToOpen;
+	}
+
+	public synchronized int write(FileTableEntry target, byte buffer[])
+    {
+        if (target == null || target.mode == "r")
+        {
+            return -1;
+        }
+
+        int blockLength = Disk.blockSize;
+        int totalBytesWritten = 0;
+        int bufferLength = buffer.length;
+        while (bufferLength > 0)
+        {
+            int currBlock = target.inode.findTargetBlock(target.seekPtr);
+            if (currBlock == -1)
+            {
+                int newBlock = superblock.getFreeBlock();
+                int validBlock = target.inode.getIndexBlockNumber(target.seekPtr, newBlock);
+
+                if (validBlock == -1 || validBlock == -2)
+                {
+                    return -1;
+                }
+                else if (validBlock == -3)
+                {
+                    int blockTest = this.superblock.getFreeBlock();
+
+                    if (target.inode.setIndexBlock(blockTest) == false)
+                    {
+                        return -1;
+                    }
+
+                    if (target.inode.getIndexBlockNumber(target.seekPtr, newBlock) != 0)
+                    {
+                        return -1;
+                    }
+                }
+                else
+                {
+                    currBlock = newBlock;
+                }
+            }
+
+            byte[] shadowBuffer = new byte[blockLength];
+            SysLib.rawread(currBlock, shadowBuffer);
+
+            int writeLoc = target.seekPtr % blockLength;
+            int writingLength = blockLength - writeLoc;
+
+            if (writingLength < bufferLength)
+            {
+                System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, writingLength);
+                SysLib.rawwrite(currBlock, shadowBuffer);
+
+                target.seekPtr += writingLength;
+                totalBytesWritten += writingLength;
+                bufferLength -= writingLength;
+            }
+            else
+            {
+                System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, bufferLength);
+                SysLib.rawwrite(currBlock, shadowBuffer0);
+
+                target.seekPtr += bufferLength;
+                totalBytesWritten += bufferLength;
+                bufferLength = 0;
+            }
+        }
+        if (target.inode.length < target.seekPtr)
+        {
+            target.inode.length = target.seekPtr;
+        }
+
+        target.inode.toDisk(target.iNumber);
+        return totalBytesWritten;
+    }
+
+	public synchronized int read(FileTableEntry target, byte buffer[])
+	{
+	    int totalBytesRead = 0;
+	    int readingLength = 0;
+	    int blockLength = Disk.blockSize;
+
+        if ((target.mode != "w") && (target.mode != "a"))
+        {
+            byte[] shadowBuffer = new byte[blockLength];
+            int bufferSize = 0;
+            while (totalBytesRead < buffer.length)
+            {
+                int currBlock = target.inode.findTargetBlock(target.seekPtr);
+
+                if (currBlock == -1)
+                {
+                    return -1;
+                }
+
+                SysLib.rawread(currBlock, shadowBuffer);
+
+                int remaining = target.inode.length - target.seekPtr;
+                boolean finalBlock =  remaining < blockLength || remaining == 0;
+
+                if (finalBlock)
+                {
+                    readingLength = fileLocation;
+                }
+                else
+                {
+                    readingLength = blockLength;
+                }
+
+                if (buffer.length < (512 - target.seekPtr))
+                {
+                    System.arraycopy(shadowBuffer, target.seekPtr, buffer, 0, buffer.length);
+                    totalBytesRead += buffer.length;
+                }
+                else
+                {
+                    System.arraycopy(shadowBuffer, 0, buffer, bufferSize, readingLength);
+                    totalBytesRead += readingLength;
+                }
+                bufferSize = bufferSize + readingLength - 1;
+                seek(target, readingLength, SEEK_CUR);
+            }
+        }
+        else
+        {
+
+            return -1;
+        }
+
+        return totalBytesRead;
+	}
+
+	public synchronized int close(FileTableEntry target)
+	{
+	    if (target == null)
+        {
+            return -1;
+        }
+
+        if(target.count > 0)
+        {
+            target.count--;
+        }
+
+	    if (target.count == 0)
+        {
+            target.inode.toDisk(target.inumber);
+            if (filetable.ffree(target))
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        return 0;
 	}
 	
-	public int delete(String fileName)
+	public synchronized int delete(String fileName)
 	{
+	    int inodeNumber = directory.namei(filename);
+
+	    if (inodeNumber == -1)
+        {
+            return -1;
+        }
+
+        Inode tempNode = new Inode(inodeNumber);
+
+	    if (!directory.ifree((short)inodeNumber))
+        {
+            return -1;
+        }
+
+        tempNode.count = 0;
+	    tempNode.toDisk(inodeNumber);
+	    return 0;
 	}
 	
-	public int fsize(int fd)
+	public int fsize(FileTableEntry target)
 	{
+	    return target.inode.length;
 	}
+
+	private boolean deallocateBlocks(FileTableEntry target)
+    {
+        Vector<int> releasedBlocks = target.inode.deallocAllBlocks(target.iNumber);
+        for (int i = 0; i < releasedBlocks.size(); i++)
+        {
+            superblock.returnBlock(releasedBlocks.elementAt(i));
+        }
+        return true;
+    }
 }
