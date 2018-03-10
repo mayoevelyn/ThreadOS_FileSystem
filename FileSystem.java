@@ -1,9 +1,9 @@
 import java.util.*;
 
-public class FileySystem
+public class FileSystem
 {
 	private SuperBlock superblock;
-	private Directory directoy;
+	private Directory directory;
 	private FileTable filetable;
 
 	private static short SEEK_SET = 0;
@@ -13,7 +13,7 @@ public class FileySystem
 	public FileSystem (int diskBlocks)
 	{
 		superblock = new SuperBlock(diskBlocks);
-		directory = new Directory(superblock.toralInodes);
+		directory = new Directory(superblock.totalInodes);
 		filetable = new FileTable (directory);
 		
 		//read the '/' file from the disk
@@ -33,7 +33,7 @@ public class FileySystem
 	    if (files > 0)
 	    {
             superblock.format(files);
-            directory = new Directory(superblock.inodeBlocks);
+            directory = new Directory(superblock.totalInodes);
             filetable = new FileTable(directory);
             return 0;
         }
@@ -86,7 +86,7 @@ public class FileySystem
 
     public FileTableEntry open(String fileName, String mode)
 	{
-	    FileTableEntry fileToOpen = filetable.falloc(filename, mode);
+	    FileTableEntry fileToOpen = filetable.falloc(fileName, mode);
 
 	    if (mode == "w")
         {
