@@ -9,8 +9,8 @@ public class SuperBlock {
 		byte[] superBlock = new byte[Disk.blockSize];
 		SysLib.rawread( 0, superBlock );
 		totalBlocks = SysLib.bytes2int( superBlock, 0 );
-		totalInodes = SysLib.bytes2int( superblock, 4 );
-		freeList = SysLib.bytes2int( superblock, 8 );
+		totalInodes = SysLib.bytes2int( superBlock, 4 );
+		freeList = SysLib.bytes2int( superBlock, 8 );
 
 		if ( totalBlocks == diskSize && totalInodes > 0 && freeList >= 2 )
 			// disk contents are valid
@@ -26,13 +26,13 @@ public class SuperBlock {
 		// 4 blocks for inodes if 64 inodes
 		this.totalInodes = inodeSize;
 
-		for(short var2 = 0; var2 < this.inodeBlocks; ++var2) {
+		for(short var2 = 0; var2 < this.totalInodes; ++var2) {
 			Inode var3 = new Inode();
 			var3.flag = 0;
 			var3.toDisk(var2);
 		}
 
-		this.freeList = 2 + this.inodeBlocks * 32 / 512;
+		this.freeList = 2 + this.totalInodes * 32 / 512;
 
 		for(int var5 = this.freeList; var5 < this.totalBlocks; ++var5) {
 			byte[] var6 = new byte[512];

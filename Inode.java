@@ -32,12 +32,15 @@ public class Inode {
       flag = SysLib.bytes2short( data, offset );
       offset += 2;
 
-      //...;
+      for(int i = 0; i < 11; ++i)
+      {
+         direct[i] = SysLib.bytes2short(data, offset);
+      }
    }
 
    // returns void according to slide?
    int toDisk( short iNumber ) {                  // save to disk as the i-th inode
-      // design it by yourself.
+
    }
 
    short getIndexBlockNumber() {
