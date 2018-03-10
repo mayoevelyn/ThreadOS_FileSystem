@@ -43,7 +43,7 @@ public class Inode {
 	}
 
 	//save to disk as the given node
-	int toDisk( short iNumber ) {
+	void toDisk( short iNumber ) {
 		
 		//create the array we'll save
 		byte[] asArray = new byte[iNodeSize];
