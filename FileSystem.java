@@ -111,11 +111,11 @@ public class FileSystem
         int bufferLength = buffer.length;
         while (bufferLength > 0)
         {
-            int currBlock = target.inode.findTargetBlock(target.seekPtr);
+            int currBlock = target.inode.getBlock(target.seekPtr);
             if (currBlock == -1)
             {
-                int newBlock = superblock.getFreeBlock();
-                int validBlock = target.inode.getIndexBlockNumber(target.seekPtr, newBlock);
+                short newBlock = (short)superblock.getFreeBlock();
+                int validBlock = target.inode.setBlock(target.seekPtr, newBlock);
 
                 if (validBlock == -1 || validBlock == -2)
                 {
@@ -123,14 +123,14 @@ public class FileSystem
                 }
                 else if (validBlock == -3)
                 {
-                    int blockTest = this.superblock.getFreeBlock();
+                    short blockTest = (short)this.superblock.getFreeBlock();
 
-                    if (target.inode.setIndexBlock(blockTest) == false)
+                    if (target.inode.setIndirectBlock(blockTest) == false)
                     {
                         return -1;
                     }
 
-                    if (target.inode.getIndexBlockNumber(target.seekPtr, newBlock) != 0)
+                    if (target.inode.setBlock(target.seekPtr, newBlock) != 0)
                     {
                         return -1;
                     }
@@ -159,7 +159,7 @@ public class FileSystem
             else
             {
                 System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, bufferLength);
-                SysLib.rawwrite(currBlock, shadowBuffer, 0);
+                SysLib.rawwrite(currBlock, shadowBuffer);
 
                 target.seekPtr += bufferLength;
                 totalBytesWritten += bufferLength;
@@ -187,7 +187,7 @@ public class FileSystem
             int bufferSize = 0;
             while (totalBytesRead < buffer.length)
             {
-                int currBlock = target.inode.findTargetBlock(target.seekPtr);
+                int currBlock = target.inode.getBlock(target.seekPtr);
 
                 if (currBlock == -1)
                 {
@@ -245,7 +245,7 @@ public class FileSystem
 
 	    if (target.count == 0)
         {
-            target.inode.toDisk(target.inumber);
+            target.inode.toDisk(target.iNumber);
             if (filetable.ffree(target))
             {
                 return 0;
@@ -260,7 +260,7 @@ public class FileSystem
 	
 	public synchronized int delete(String fileName)
 	{
-	    int inodeNumber = directory.namei(filename);
+	    int inodeNumber = directory.namei(fileName);
 
 	    if (inodeNumber == -1)
         {

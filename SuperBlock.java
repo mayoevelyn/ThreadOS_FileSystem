@@ -29,16 +29,15 @@ public class SuperBlock {
 
 	void format( int inodeSize ) {
 		// 4 blocks for inodes if 64 inodes
-		this.totalInodes = inodeSize;
+		totalInodes = inodeSize;
 
-		for(short i = 0; i < this.totalInodes; ++i) {
+		for(short i = 0; i < totalInodes; ++i) {
 			Inode newInode = new Inode();
 			newInode.flag = 0;
 			newInode.toDisk(i);
 		}
-
+		// 2 for super block + first inode reserved by directory
 		freeList = 2 + ((totalInodes*32)/512);
-
 
 		for(int i = freeList; i < totalBlocks; ++i) {
 			byte[] newBlock = new byte[512];
@@ -51,15 +50,15 @@ public class SuperBlock {
 			SysLib.rawwrite(i, newBlock);
 		}
 
-		this.sync();
+		sync();
 	}
 
 	// Write back totalBlocks, inodeBlocks, and freeList to disk
 	void sync() {
 		byte[] block = new byte[512];
-		SysLib.int2bytes(this.totalBlocks, block, 0);
-		SysLib.int2bytes(this.totalInodes, block, 4);
-		SysLib.int2bytes(this.freeList, block, 8);
+		SysLib.int2bytes(totalBlocks, block, 0);
+		SysLib.int2bytes(totalInodes, block, 4);
+		SysLib.int2bytes(freeList, block, 8);
 		SysLib.rawwrite(0, block);
 		SysLib.cerr("Superblock synchronized\n");
 	}
