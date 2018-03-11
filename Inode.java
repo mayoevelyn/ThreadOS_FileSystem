@@ -1,3 +1,5 @@
+import java.util.Vector;
+
 public class Inode {
 	private final static int iNodeSize = 32;       // fix to 32 bytes
 	private final static int directSize = 11;      // # direct pointers
@@ -23,7 +25,7 @@ public class Inode {
 	}
 
 	//Loads iNode from disk
-	Inode( short iNumber ) {
+	Inode(short iNumber) {
 		// prep the inode block
 		int blockNumber = 1 + iNumber / 16; // 1 for superblock
 		byte[] data = new byte[Disk.blockSize];
@@ -50,7 +52,6 @@ public class Inode {
 
 	//save to disk as the given node
 	void toDisk( short iNumber ) {
-		
 		//create the array we'll save
 		byte[] asArray = new byte[iNodeSize];
 		int blockNumber = 1 + iNumber / 16;
@@ -65,7 +66,7 @@ public class Inode {
 		offset += 2;
 		
 		//write the direct array
-		for (int i = 0; j < 11; i++) {
+		for (int i = 0; i < 11; i++) {
 			SysLib.short2bytes(direct[i], asArray, offset);
 			offset += 2;
 		}
@@ -85,8 +86,8 @@ public class Inode {
 	}
 	
 	//helper method
-	int toDisk(int iNumber) {
-		return toDisk((short) iNumber);
+	void toDisk(int iNumber) {
+		toDisk((short)iNumber);
 	}
 
 	//Finds the block that a seek pointer at this offset would be referencing
@@ -117,11 +118,13 @@ public class Inode {
 
 	// error cases:
 	// -1: direct block already taken
-
+	// -2: writing out of order
+	// -3: no indirect
+	// -4: negative offset
 	int setBlock(int offset, short iNumber) {
 		// check that offset is valid
 		if(offset < 0)
-			return -1;
+			return -4;
 
 		// find offset in block
 		int blockOffset = offset / 512;
@@ -131,7 +134,7 @@ public class Inode {
 			if (direct[blockOffset] >= 0) {
 				return -1;
 			}
-			//
+			// trying to write out of order
 			else if (blockOffset > 0 && direct[blockOffset - 1] == -1) {
 				return -2;
 			}
@@ -141,19 +144,27 @@ public class Inode {
 				direct[blockOffset] = iNumber;
 				return 0;
 			}
-		} else if (this.indirect < 0) {
+		}
+		// if not direct, check that indirect block is in use
+		else if (indirect < 0) {
 			return -3;
-		} else {
-			byte[] var4 = new byte[512];
-			SysLib.rawread(this.indirect, var4);
-			int var5 = var3 - 11;
-			if (SysLib.bytes2short(var4, var5 * 2) > 0) {
-				SysLib.cerr("indexBlock, indirectNumber = " + var5 + " contents = " + SysLib.bytes2short(var4, var5 * 2) + "\n");
+		}
+		// write in indirect block
+		else {
+			// read indirect block into temp block
+			byte[] block = new byte[512];
+			SysLib.rawread(indirect, block);
+			// offset for within indirect block
+			int indBlkOffset = blockOffset - 11;
+			// if indirect pointer is already set, error
+			if (SysLib.bytes2short(block, indBlkOffset * 2) > 0) {
 				return -1;
-			} else {
-				SysLib.short2bytes(iNumber, var4, var5 * 2);
-				SysLib.rawwrite(this.indirect, var4);
-				return 0;
+			}
+			// write a pointer into indirect block at offset
+			else {
+				SysLib.short2bytes(iNumber, block, indBlkOffset * 2);
+				SysLib.rawwrite(indirect, block);
+				return 0; // yay!
 			}
 		}
 	}
@@ -206,5 +217,42 @@ public class Inode {
 		else {
 			return null;
 		}
+	}
+
+	Vector<Integer> deallocAllBlocks(int iNumber)
+	{
+		// list of blocks to release
+		Vector<Integer> releasedBlocks = new Vector<Integer>();
+
+		// handle indirect blocks
+		// the removed indirect block
+		byte[] indirectBlock = removeIndirectBlock();
+		// add all blocks pointed by pointers in ind block to list
+		if (indirectBlock != null) {
+			// head of indirect block
+			byte indirectNumber = 0;
+			// cycle through ind block pointers and add it to the list
+			short blockPtr;
+			while((blockPtr = SysLib.bytes2short(indirectBlock, indirectNumber)) != -1) {
+				releasedBlocks.add((int)blockPtr);
+			}
+		}
+
+		// handle direct blocks
+		for(int blockPtr = 0; blockPtr < 11; ++blockPtr)
+		{
+			// if the direct block is empty skip
+			if(direct[blockPtr] != -1)
+			{
+				// add to be released
+				releasedBlocks.add(blockPtr);
+				// set direct block unused
+				direct[blockPtr] = -1;
+			}
+		}
+		// write to disk
+		toDisk(iNumber);
+
+		return releasedBlocks;
 	}
 }

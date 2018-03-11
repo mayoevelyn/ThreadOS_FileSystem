@@ -286,7 +286,7 @@ public class FileSystem
 
 	private boolean deallocateBlocks(FileTableEntry target)
     {
-        Vector<int> releasedBlocks = target.inode.deallocAllBlocks(target.iNumber);
+        Vector<Integer> releasedBlocks = target.inode.deallocAllBlocks(target.iNumber);
         for (int i = 0; i < releasedBlocks.size(); i++)
         {
             superblock.returnBlock(releasedBlocks.elementAt(i));
