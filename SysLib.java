@@ -105,7 +105,7 @@ public class SysLib {
 
     public static int close( int fd ) {
         return Kernel.interrupt( Kernel.INTERRUPT_SOFTWARE,
-                 Kernel.CLOSE, 0, null );
+                 Kernel.CLOSE, fd, null );
     }
 
     public static int seek( int fd, int offset, int whence ) {

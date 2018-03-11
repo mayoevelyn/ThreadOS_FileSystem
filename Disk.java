@@ -113,13 +113,13 @@ public class Disk extends Thread {
     }
 
     private void seek( ) {
-	int seekTime = transferTime + delayPerTrack 
-	    * Math.abs( targetBlockId/trackSize - currentBlockId/trackSize );
-	try {
-	    Thread.sleep( seekTime );
-	} catch( InterruptedException e ) {
-	    SysLib.cerr( e.toString( ) + "\n" );
-	}
+//	int seekTime = transferTime + delayPerTrack
+//	    * Math.abs( targetBlockId/trackSize - currentBlockId/trackSize );
+//	try {
+//	    Thread.sleep( seekTime );
+//	} catch( InterruptedException e ) {
+//	    SysLib.cerr( e.toString( ) + "\n" );
+//	}
 	currentBlockId = targetBlockId;
     }
 
