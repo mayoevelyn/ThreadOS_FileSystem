@@ -29,6 +29,7 @@ public class Inode {
 		// prep the inode block
 		int blockNumber = 1 + iNumber / 16; // 1 for superblock
 		byte[] data = new byte[Disk.blockSize];
+		// set offset
 		int offset = (iNumber % 16) * 32;
 
 		// read the data
@@ -45,6 +46,8 @@ public class Inode {
 		// read 11 direct blocks
 		for(int i = 0; i < 11; ++i) {
 			direct[i] = SysLib.bytes2short(data, offset);
+			// offset increase by a short
+			offset += 2;
 		}
 		// read indirect blocks
 		indirect = SysLib.bytes2short(data, offset);
@@ -111,8 +114,8 @@ public class Inode {
 		else {
 			byte[] block = new byte[512];
 			SysLib.rawread(indirect, block);
-			int var4 = blockNumber - 11;
-			return SysLib.bytes2short(block, var4 * 2);
+			int indBlkOffset = blockNumber - 11;
+			return SysLib.bytes2short(block, indBlkOffset*2);
 		}
 	}
 
