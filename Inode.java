@@ -198,6 +198,7 @@ public class Inode {
 				SysLib.short2bytes((short)-1, newIndirectBlock, i*2);
 			}
 
+			// write the new indirect block to disk
 			SysLib.rawwrite(indirectBlockNumber, newIndirectBlock);
 			return true;
 		}
