@@ -65,16 +65,23 @@ public class SuperBlock {
 
 	// Dequeue the top block from the free list
 	public int getFreeBlock() {
+		// old free block head
+		int freeHead = freeList;
 		// check that freelist head block is valid
-		if (freeList != -1) {
+		if (freeHead != -1) {
+			// allocate new empty block
 			byte[] emptyBlock = new byte[512];
-			SysLib.rawread(freeList, emptyBlock);
+			// write old pointer to the new block
+			SysLib.rawread(freeHead, emptyBlock);
+
+			// update new free list with ptr to empty block
 			freeList = SysLib.bytes2int(emptyBlock, 0);
+			// write new pointer to disk
 			SysLib.int2bytes(0, emptyBlock, 0);
-			SysLib.rawwrite(freeList, emptyBlock);
+			SysLib.rawwrite(freeHead, emptyBlock);
 		}
 		// return the free block number
-		return freeList;
+		return freeHead;
 	}
 
 	// Enqueue a given block to the end of the free list

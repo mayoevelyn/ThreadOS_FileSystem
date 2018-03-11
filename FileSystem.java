@@ -117,7 +117,7 @@ public class FileSystem
                 short newBlock = (short)superblock.getFreeBlock();
                 int validBlock = target.inode.setBlock(target.seekPtr, newBlock);
 
-                if (validBlock == -1 || validBlock == -2)
+                if (validBlock == -1 || validBlock == -2 || validBlock == -4)
                 {
                     return -1;
                 }
