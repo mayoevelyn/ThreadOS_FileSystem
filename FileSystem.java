@@ -165,30 +165,34 @@ public class FileSystem
             return -1;
         }
 
-        int blockLength = Disk.blockSize;
-        int totalBytesWritten = 0;
-        int bufferLength = buffer.length;
         synchronized(target) {
+            int totalBytesWritten = 0;
+            int bufferLength = buffer.length;
+            int blockLength = 512;
+
             while (bufferLength > 0) {
                 int currBlock = target.inode.getBlock(target.seekPtr);
                 if (currBlock == -1) {
                     short newBlock = (short) superblock.getFreeBlock();
-                    int validBlock = target.inode.setBlock(target.seekPtr, newBlock);
+                    switch (target.inode.setBlock(target.seekPtr, newBlock)) {
+                        case -3:
+                            short blockTest = (short) this.superblock.getFreeBlock();
 
-                    if (validBlock == -1 || validBlock == -2 || validBlock == -4) {
-                        return -1;
-                    } else if (validBlock == -3) {
-                        short blockTest = (short) this.superblock.getFreeBlock();
+                            if (target.inode.setIndirectBlock(blockTest) == false) {
+                                return -1;
+                            }
 
-                        if (target.inode.setIndirectBlock(blockTest) == false) {
+                            if (target.inode.setBlock(target.seekPtr, newBlock) != 0) {
+                                return -1;
+                            }
+                        case 0:
+                        default:
+                            currBlock = newBlock;
+                            break;
+                        case -1:
+                        case -2:
+                        case -4:
                             return -1;
-                        }
-
-                        if (target.inode.setBlock(target.seekPtr, newBlock) != 0) {
-                            return -1;
-                        }
-                    } else {
-                        currBlock = newBlock;
                     }
                 }
 
@@ -198,90 +202,70 @@ public class FileSystem
                 int writeLoc = target.seekPtr % blockLength;
                 int writingLength = blockLength - writeLoc;
 
-                if (writingLength <= bufferLength) {
+                if (writingLength < bufferLength)
+                {
                     System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, writingLength);
                     SysLib.rawwrite(currBlock, shadowBuffer);
-
                     target.seekPtr += writingLength;
                     totalBytesWritten += writingLength;
                     bufferLength -= writingLength;
-                } else {
+                }
+                else
+                {
                     System.arraycopy(buffer, totalBytesWritten, shadowBuffer, writeLoc, bufferLength);
                     SysLib.rawwrite(currBlock, shadowBuffer);
-
                     target.seekPtr += bufferLength;
                     totalBytesWritten += bufferLength;
                     bufferLength = 0;
                 }
-            }
-            if (target.inode.length <= target.seekPtr) {
-                target.inode.length = target.seekPtr;
-            }
 
+                if (target.inode.length <= target.seekPtr) {
+                    target.inode.length = target.seekPtr;
+                }
+            }
             target.inode.toDisk(target.iNumber);
             return totalBytesWritten;
         }
-
     }
 
-	public synchronized int read(FileTableEntry target, byte buffer[])
-	{
-	    int totalBytesRead = 0;
-	    int readingLength = 0;
-	    int blockLength = Disk.blockSize;
-
+    public synchronized int read(FileTableEntry target, byte buffer[])
+    {
+        int totalBytesRead = 0;
+        int blockLength = Disk.blockSize;
+        int bufferLength = buffer.length;
         if ((target.mode != "w") && (target.mode != "a"))
         {
-            byte[] shadowBuffer = new byte[blockLength];
+
             int bufferSize = 0;
-            while (totalBytesRead < buffer.length)
+            while (bufferLength > 0 && target.seekPtr < this.fsize(target))
             {
                 int currBlock = target.inode.getBlock(target.seekPtr);
 
                 if (currBlock == -1)
                 {
-                    return -1;
+                    break;
                 }
-
+                byte[] shadowBuffer = new byte[blockLength];
                 SysLib.rawread(currBlock, shadowBuffer);
 
-                int writeLoc = target.seekPtr % blockLength;
-                int writingLength = blockLength - writeLoc;
+                int readLoc = target.seekPtr % blockLength;
+                int readingLength = blockLength - readLoc;
+                int remaining = this.fsize(target) - target.seekPtr;
+                int smallestRead = Math.min(Math.min(readingLength, bufferLength), remaining);
 
-                int remaining = target.inode.length - target.seekPtr;
-                boolean finalBlock =  remaining < blockLength || remaining == 0;
-
-                if (finalBlock)
-                {
-                    readingLength = remaining;
-                }
-                else
-                {
-                    readingLength = blockLength;
-                }
-
-                if (buffer.length < (512 - target.seekPtr))
-                {
-                    System.arraycopy(shadowBuffer, target.seekPtr, buffer, 0, buffer.length);
-                    totalBytesRead += buffer.length;
-                }
-                else
-                {
-                    System.arraycopy(shadowBuffer, 0, buffer, bufferSize, readingLength);
-                    totalBytesRead += readingLength;
-                }
-                bufferSize = bufferSize + readingLength - 1;
-                seek(target, readingLength, SEEK_CUR);
+                System.arraycopy(shadowBuffer, readLoc, buffer, totalBytesRead, smallestRead);
+                target.seekPtr += smallestRead;
+                totalBytesRead += smallestRead;
+                bufferLength -= smallestRead;
             }
+            return totalBytesRead;
         }
         else
         {
 
             return -1;
         }
-
-        return totalBytesRead;
-	}
+    }
 
 	public synchronized int close(FileTableEntry target)
 	{
