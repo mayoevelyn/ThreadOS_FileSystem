@@ -151,7 +151,6 @@ public class FileTable
 		{
 			return false; //removal of reference failed
 		}
-		return false; //safety end of process
 	}
 
 	//Checks if the filetable is empty of all references to any files
